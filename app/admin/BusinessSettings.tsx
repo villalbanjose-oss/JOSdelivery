@@ -859,7 +859,7 @@ export default function BusinessSettings() {
         <ExtraIngredientsModal
           categoryKey={selectedCategory}
           extraIngredients={extraIngredientsByCategory[selectedCategory] || []}
-          onSave={(ingredients: any) => {
+          onSave={(ingredients: any[]) => {
             saveExtraIngredients(selectedCategory, ingredients);
             setShowExtraIngredientsModal(false);
           }}
