@@ -1,8 +1,7 @@
-
-// Función para limpiar datos multiidioma automáticamente
 export const cleanMultiLanguageData = () => {
+  if (typeof window === 'undefined') return;
+  
   try {
-    // Función auxiliar para convertir objetos multiidioma a string
     const convertToString = (value: any): string => {
       if (typeof value === 'string') return value;
       if (typeof value === 'object' && value !== null) {
@@ -11,7 +10,6 @@ export const cleanMultiLanguageData = () => {
       return String(value || '');
     };
 
-    // Función auxiliar para convertir arrays de ingredientes
     const convertIngredients = (ingredients: any): string[] => {
       if (Array.isArray(ingredients)) {
         return ingredients.map(ingredient => convertToString(ingredient));
@@ -19,7 +17,6 @@ export const cleanMultiLanguageData = () => {
       return [];
     };
 
-    // Limpiar productos del menú
     const menuProducts = localStorage.getItem('menuProducts');
     if (menuProducts) {
       try {
@@ -60,7 +57,6 @@ export const cleanMultiLanguageData = () => {
       }
     }
 
-    // Limpiar categorías
     const menuCategories = localStorage.getItem('menuCategories');
     if (menuCategories) {
       try {
@@ -86,7 +82,6 @@ export const cleanMultiLanguageData = () => {
       }
     }
 
-    // Limpiar testimonios
     const testimonials = localStorage.getItem('testimonials');
     if (testimonials) {
       try {
@@ -117,7 +112,6 @@ export const cleanMultiLanguageData = () => {
       }
     }
 
-    // Limpiar FAQs
     const faqs = localStorage.getItem('faqs');
     if (faqs) {
       try {
@@ -148,7 +142,6 @@ export const cleanMultiLanguageData = () => {
       }
     }
 
-    // Limpiar configuraciones de combos
     const comboSettings = localStorage.getItem('comboSettings');
     if (comboSettings) {
       try {
@@ -181,7 +174,6 @@ export const cleanMultiLanguageData = () => {
       }
     }
 
-    // Limpiar pedidos
     const orders = localStorage.getItem('orders');
     if (orders) {
       try {
@@ -219,8 +211,6 @@ export const cleanMultiLanguageData = () => {
         console.error('Error cleaning orders:', e);
       }
     }
-
-    console.log('Limpieza de datos multiidioma completada');
   } catch (error) {
     console.error('Error durante la limpieza de datos multiidioma:', error);
   }

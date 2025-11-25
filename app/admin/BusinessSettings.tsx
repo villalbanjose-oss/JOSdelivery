@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 
@@ -368,6 +367,62 @@ export default function BusinessSettings() {
   };
 
   // -------------------------------------------------------------------------
+  // Función de descarga de configuración
+  // -------------------------------------------------------------------------
+  const downloadConfiguration = () => {
+    try {
+      // Crear objeto con toda la configuración actual
+      const configurationData = {
+        businessData,
+        scheduleSettings,
+        comboSettings,
+        checkoutSettings,
+        categories,
+        extraIngredientsByCategory,
+        combosByProduct,
+        exportDate: new Date().toISOString(),
+        version: '1.0'
+      };
+
+      // Convertir a JSON con formato legible
+      const jsonString = JSON.stringify(configurationData, null, 2);
+
+      // Crear blob con el contenido JSON
+      const blob = new Blob([jsonString], { type: 'application/json' });
+
+      // Crear URL temporal para el blob
+      const url = URL.createObjectURL(blob);
+
+      // Crear elemento de enlace temporal para la descarga
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generar nombre de archivo con fecha y hora
+      const now = new Date();
+      const dateString = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeString = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+      link.download = `configuracion-negocio-${dateString}-${timeString}.json`;
+
+      // Agregar al DOM temporalmente y hacer clic
+      document.body.appendChild(link);
+      link.click();
+
+      // Limpiar: remover elemento y liberar URL
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Mostrar mensaje de éxito
+      setShowSuccessMessage('Configuración descargada exitosamente');
+      setTimeout(() => setShowSuccessMessage(''), 3000);
+
+    } catch (error) {
+      console.error('Error al descargar configuración:', error);
+      setShowSuccessMessage('Error al descargar la configuración');
+      setTimeout(() => setShowSuccessMessage(''), 3000);
+    }
+  };
+
+  // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
   return (
@@ -381,6 +436,28 @@ export default function BusinessSettings() {
           </div>
         </div>
       )}
+
+      {/* Botón de descarga de configuración */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+              Exportar Configuración
+            </h3>
+            <p className="text-gray-600 text-sm">
+              Descarga un archivo JSON con toda la configuración actual del negocio, 
+              incluyendo información del negocio, horarios, combos, ingredientes extra y ajustes de checkout.
+            </p>
+          </div>
+          <button
+            onClick={downloadConfiguration}
+            className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors cursor-pointer whitespace-nowrap flex items-center"
+          >
+            <i className="ri-download-line mr-2"></i>
+            Descargar Configuración
+          </button>
+        </div>
+      </div>
 
       {/* Información del Negocio */}
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -676,8 +753,7 @@ export default function BusinessSettings() {
                                 onChange={e =>
                                   updateScheduleDay(day, 'close', e.target.value)
                                 }
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-5
-                                focus:border-transparent"
+                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                               />
                             </div>
                           </>
@@ -872,7 +948,7 @@ export default function BusinessSettings() {
         <CombosModal
           product={selectedProduct}
           combos={combosByProduct[selectedProduct.id] || []}
-          onSave={combos => {
+          onSave={(combos: any[]) => {
             saveCombos(selectedProduct.id, combos);
             setShowCombosModal(false);
           }}
@@ -884,7 +960,12 @@ export default function BusinessSettings() {
 }
 
 // Modal de Ingredientes Extra
-function ExtraIngredientsModal({ categoryKey, extraIngredients, onSave, onClose }: any) {
+function ExtraIngredientsModal({ categoryKey, extraIngredients, onSave, onClose }: {
+  categoryKey: string;
+  extraIngredients: any[];
+  onSave: (ingredients: any[]) => void;
+  onClose: () => void;
+}) {
   const [ingredients, setIngredients] = useState(
     Array.isArray(extraIngredients) ? extraIngredients : []
   );
@@ -990,7 +1071,12 @@ function ExtraIngredientsModal({ categoryKey, extraIngredients, onSave, onClose 
 }
 
 // Modal de Combos
-function CombosModal({ product, combos, onSave, onClose }: any) {
+function CombosModal({ product, combos, onSave, onClose }: {
+  product: any;
+  combos: any[];
+  onSave: (combos: any[]) => void;
+  onClose: () => void;
+}) {
   const [productCombos, setProductCombos] = useState<Array<any>>(
     Array.isArray(combos) ? combos : []
   );

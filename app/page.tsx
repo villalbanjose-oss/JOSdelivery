@@ -1,6 +1,5 @@
-
 'use client';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { cleanMultiLanguageData } from '../lib/menuData';
 
@@ -29,100 +28,90 @@ export default function HomePage() {
   });
 
   const [businessStatus, setBusinessStatus] = useState({ isOpen: true, message: '' });
+  const [mounted, setMounted] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Función para calcular el estado del negocio - sin dependencias que cambien
-  const calculateBusinessStatus = useCallback(() => {
-    const savedScheduleSettings = localStorage.getItem('scheduleSettings');
-    let currentScheduleSettings = scheduleSettings;
+  useEffect(() => {
+    setMounted(true);
     
-    if (savedScheduleSettings) {
-      try {
-        currentScheduleSettings = JSON.parse(savedScheduleSettings);
-      } catch (e) {
-        console.error('Error parsing scheduleSettings:', e);
+    if (typeof window !== 'undefined') {
+      cleanMultiLanguageData();
+
+      const savedHomeSettings = localStorage.getItem('homeSettings');
+      if (savedHomeSettings) {
+        try {
+          const parsed = JSON.parse(savedHomeSettings);
+          setHomeSettings(prev => ({ ...prev, ...parsed }));
+        } catch (e) {
+          console.error('Error parsing homeSettings:', e);
+        }
+      }
+
+      const savedScheduleSettings = localStorage.getItem('scheduleSettings');
+      if (savedScheduleSettings) {
+        try {
+          const parsed = JSON.parse(savedScheduleSettings);
+          setScheduleSettings(prev => ({ ...prev, ...parsed }));
+        } catch (e) {
+          console.error('Error parsing scheduleSettings:', e);
+        }
       }
     }
+  }, []);
 
-    if (!currentScheduleSettings.isEnabled) {
-      setBusinessStatus({ isOpen: true, message: '' });
-      return;
-    }
+  useEffect(() => {
+    if (!mounted) return;
 
-    const now = new Date();
-    const currentDay = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][now.getDay()];
-    const currentTime = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-    const todaySchedule = currentScheduleSettings.schedule[currentDay as keyof typeof currentScheduleSettings.schedule];
-    
-    const dayNames = {
-      monday: 'Lunes',
-      tuesday: 'Martes',
-      wednesday: 'Miércoles',
-      thursday: 'Jueves',
-      friday: 'Viernes',
-      saturday: 'Sábado',
-      sunday: 'Domingo'
+    const calculateBusinessStatus = () => {
+      if (typeof window === 'undefined') return;
+
+      if (!scheduleSettings.isEnabled) {
+        setBusinessStatus({ isOpen: true, message: '' });
+        return;
+      }
+
+      const now = new Date();
+      const currentDay = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][now.getDay()];
+      const currentTime = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+      const todaySchedule = scheduleSettings.schedule[currentDay as keyof typeof scheduleSettings.schedule];
+      
+      const dayNames = {
+        monday: 'Lunes',
+        tuesday: 'Martes',
+        wednesday: 'Miércoles',
+        thursday: 'Jueves',
+        friday: 'Viernes',
+        saturday: 'Sábado',
+        sunday: 'Domingo'
+      };
+
+      if (!todaySchedule.enabled) {
+        setBusinessStatus({ 
+          isOpen: false, 
+          message: `Hoy ${dayNames[currentDay as keyof typeof dayNames]}: ${scheduleSettings.closedMessage}`
+        });
+        return;
+      }
+      
+      const isOpen = currentTime >= todaySchedule.open && currentTime <= todaySchedule.close;
+      setBusinessStatus({ 
+        isOpen, 
+        message: `Hoy ${dayNames[currentDay as keyof typeof dayNames]}: ${isOpen ? 'ABIERTO' : 'CERRADO'} (${todaySchedule.open} - ${todaySchedule.close})`
+      });
     };
 
-    if (!todaySchedule.enabled) {
-      setBusinessStatus({ 
-        isOpen: false, 
-        message: `Hoy ${dayNames[currentDay as keyof typeof dayNames]}: ${currentScheduleSettings.closedMessage}`
-      });
-      return;
-    }
-    
-    const isOpen = currentTime >= todaySchedule.open && currentTime <= todaySchedule.close;
-    setBusinessStatus({ 
-      isOpen, 
-      message: `Hoy ${dayNames[currentDay as keyof typeof dayNames]}: ${isOpen ? 'ABIERTO' : 'CERRADO'} (${todaySchedule.open} - ${todaySchedule.close})`
-    });
-  }, []); // Sin dependencias para evitar bucles
-
-  // Efecto principal de carga inicial
-  useEffect(() => {
-    // Ejecutar limpieza automática al cargar la página principal
-    cleanMultiLanguageData();
-
-    // Cargar configuración de la página principal
-    const savedHomeSettings = localStorage.getItem('homeSettings');
-    if (savedHomeSettings) {
-      try {
-        const parsed = JSON.parse(savedHomeSettings);
-        setHomeSettings(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
-        console.error('Error parsing homeSettings:', e);
-      }
-    }
-
-    // Cargar configuración de horarios
-    const savedScheduleSettings = localStorage.getItem('scheduleSettings');
-    if (savedScheduleSettings) {
-      try {
-        const parsed = JSON.parse(savedScheduleSettings);
-        setScheduleSettings(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
-        console.error('Error parsing scheduleSettings:', e);
-      }
-    }
-
-    // Calcular estado inicial
     calculateBusinessStatus();
 
-    // Configurar intervalo para actualización automática
     intervalRef.current = setInterval(() => {
       calculateBusinessStatus();
     }, 60000);
 
-    // Event listener para cambios de horario
     const handleScheduleUpdate = () => {
       const savedScheduleSettings = localStorage.getItem('scheduleSettings');
       if (savedScheduleSettings) {
         try {
           const parsed = JSON.parse(savedScheduleSettings);
           setScheduleSettings(parsed);
-          // Recalcular inmediatamente después de actualizar
-          setTimeout(calculateBusinessStatus, 100);
         } catch (e) {
           console.error('Error parsing updated scheduleSettings:', e);
         }
@@ -131,18 +120,33 @@ export default function HomePage() {
 
     window.addEventListener('scheduleUpdated', handleScheduleUpdate);
 
-    // Cleanup
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
       window.removeEventListener('scheduleUpdated', handleScheduleUpdate);
     };
-  }, []); // Solo se ejecuta una vez al montar
+  }, [mounted, scheduleSettings.isEnabled, scheduleSettings.closedMessage, scheduleSettings.schedule]);
 
   const backgroundStyle = homeSettings.useCustomBackground && homeSettings.backgroundImage
     ? { backgroundImage: `url(${homeSettings.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : { background: 'linear-gradient(135deg, #E2B714 0%, #F4D03F 50%, #E2B714 100%)' };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #E2B714 0%, #F4D03F 50%, #E2B714 100%)' }}>
+        <div className="container mx-auto px-4 py-16">
+          <div className="text-center">
+            <div className="animate-pulse">
+              <div className="w-32 h-32 mx-auto mb-6 bg-white/20 rounded-full"></div>
+              <div className="h-12 bg-white/20 rounded mb-4 max-w-md mx-auto"></div>
+              <div className="h-6 bg-white/20 rounded mb-8 max-w-lg mx-auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={backgroundStyle}>
@@ -174,7 +178,6 @@ export default function HomePage() {
                   {homeSettings.description}
                 </p>
                 
-                {/* Estado del horario */}
                 {scheduleSettings.isEnabled && (
                   <div className={`mb-4 p-3 rounded-lg ${businessStatus.isOpen ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
                     <div className="flex items-center justify-center">
